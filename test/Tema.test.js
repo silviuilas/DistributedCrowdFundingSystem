@@ -116,7 +116,7 @@ describe('Tema', function () {
             assert.equal(actualPercent, desiredPercent)
         });
 
-        it('should not let the other person  deposit money', async function () {
+        it('should not let the other person a new  set percent', async function () {
             let desiredPercent = 30;
             await truffleAssert.reverts(
                 sponsorFunding.methods.setPercent(desiredPercent).send({
@@ -135,11 +135,30 @@ describe('Tema', function () {
                 value: crowdFundingGoal + 100
             })
             let state = await crowdfunding.methods.state().call();
-            let crowdFundingBalance = await crowdfunding.methods.getBalance().call();
-            let distributeFundingBalance = await distributeFunding.methods.getBalance().call();
+            let crowdFundingBalance = await crowdfunding.methods.getBalance().call()
+            assert(1, state)
+            assert(crowdFundingGoal, crowdFundingBalance)
+            await crowdfunding.methods.askForSponsorship().send({
+                from: accounts[0],
+                gas: "1000000",
+            })
+            let stateAfterSponsorship = await crowdfunding.methods.state().call();
+            let crowdFundingBalanceAfterSponsorship = await crowdfunding.methods.getBalance().call()
             let toTransfer = (crowdFundingGoal * percent) / 100;
-            assert.equal(state, 2)
-            assert.equal(crowdFundingBalance, 0)
+            assert(2, stateAfterSponsorship)
+            assert(crowdFundingGoal + toTransfer, crowdFundingBalanceAfterSponsorship)
+
+
+            await crowdfunding.methods.sendToDistributeFunding().send({
+                from: accounts[0],
+                gas: "1000000",
+            })
+            let stateFinal = await crowdfunding.methods.state().call();
+            let crowdFundingFinal = await crowdfunding.methods.getBalance().call()
+            assert(3, stateFinal)
+            assert("0", crowdFundingFinal)
+
+            let distributeFundingBalance = await distributeFunding.methods.getBalance().call();
             assert.equal(distributeFundingBalance, crowdFundingGoal + toTransfer)
 
 

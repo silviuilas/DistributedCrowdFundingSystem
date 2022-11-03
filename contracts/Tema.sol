@@ -4,11 +4,18 @@ contract CrowdFunding {
     mapping(address => uint) balance;
     address payable private sponsorFundingAddress;
     address payable private distributeFundingAddress;
+    address private ownerAddress;
 
     constructor (uint _fundingGoalTarget, address  payable _sponsorFundingAddress, address payable _distributeFundingAddress) {
         fundingGoalTarget = _fundingGoalTarget;
         sponsorFundingAddress = payable(_sponsorFundingAddress);
         distributeFundingAddress = payable(_distributeFundingAddress);
+        ownerAddress = msg.sender;
+    }
+
+    modifier onlyByOwner()  {
+        require(msg.sender == ownerAddress);
+        _;
     }
 
     function deposit() external payable {
@@ -16,21 +23,21 @@ contract CrowdFunding {
             balance[msg.sender] += msg.value;
             if (address(this).balance >= fundingGoalTarget) {
                 address payable user = payable(msg.sender);
-                uint ammount = address(this).balance - fundingGoalTarget;
-                user.transfer(ammount);
-                askForSponsorship();
+                uint amount = address(this).balance - fundingGoalTarget;
+                user.transfer(amount);
+                state = 1;
             }
         } else {
             revert("not in non-financed state");
         }
     }
 
-    function withdraw(uint ammount) external {
+    function withdraw(uint amount) external {
         require(state == 0);
         address payable user = payable(msg.sender);
-        require(ammount <= balance[user]);
-        balance[user] = balance[user] - ammount;
-        user.transfer(ammount);
+        require(amount <= balance[user]);
+        balance[user] = balance[user] - amount;
+        user.transfer(amount);
     }
 
     receive() external payable {}
@@ -39,19 +46,23 @@ contract CrowdFunding {
         return address(this).balance;
     }
 
-    function askForSponsorship() private {
-        state = 1;
+    function askForSponsorship() onlyByOwner() public {
         SponsorFunding sponsor = SponsorFunding(sponsorFundingAddress);
         sponsor.sponsorCrowdFunding();
     }
 
-    function sponsorDeposit() external  {
+    function sendToDistributeFunding() onlyByOwner() public {
+        require(state == 2);
+        DistributeFunding distributeFunding = DistributeFunding(distributeFundingAddress);
+        payable(distributeFundingAddress).transfer(address(this).balance);
+        distributeFunding.deposit();
+        state = 3;
+    }
+
+    function sponsorDeposit() external {
         if (state == 1) {
             if (sponsorFundingAddress == msg.sender) {
                 state = 2;
-                DistributeFunding distributeFunding = DistributeFunding(distributeFundingAddress);
-                payable(distributeFundingAddress).transfer(address(this).balance);
-                distributeFunding.deposit();
             } else {
                 revert("you are not the sponsor");
             }
@@ -71,17 +82,22 @@ contract SponsorFunding {
         percent = initPercent;
     }
 
+    modifier onlyByOwner()  {
+        require(msg.sender == ownerAddress);
+        _;
+    }
+
     function deposit() external payable {
         if (msg.sender != ownerAddress) {
             revert("you are not the owner");
         }
     }
 
-    function withdraw(uint ammount) external {
+    function withdraw(uint amount) external {
         require(msg.sender == ownerAddress);
         address payable user = payable(msg.sender);
-        require(ammount <= address(this).balance);
-        user.transfer(ammount);
+        require(amount <= address(this).balance);
+        user.transfer(amount);
     }
 
     function setPercent(uint newPercent) external {
@@ -109,11 +125,12 @@ contract DistributeFunding {
 
     address private ownerAddress;
     address crowdFundingAddr;
-    mapping (address => Beneficiary) beneficiaries;
+    mapping(address => Beneficiary) beneficiaries;
     uint totalPercent = 0;
     uint moneyReceived;
 
     bool receivedFunding = false;
+
     event receivedFunds(address, uint);
     event withdrawnFunds(address, uint, uint);
 
@@ -126,7 +143,7 @@ contract DistributeFunding {
         bool hasWithdrawn;
     }
 
-    receive () payable external {
+    receive() payable external {
         emit receivedFunds(msg.sender, msg.value);
     }
 
@@ -136,7 +153,7 @@ contract DistributeFunding {
         moneyReceived = address(this).balance;
     }
 
-    function withdraw() external  {
+    function withdraw() external {
         require(receivedFunding == true, "Funding not received yet");
         require(beneficiaries[msg.sender].percent > 0, "No beneficiary related to this address");
         require(beneficiaries[msg.sender].hasWithdrawn == false, "This beneficiary already withdrew his share");
