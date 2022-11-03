@@ -117,8 +117,8 @@ contract SponsorFunding {
         CrowdFunding crowdFunding = CrowdFunding(crowdFundingAddress);
         if (crowdFunding.fundingGoalTarget() == crowdFundingAddress.balance) {
             uint toTransfer = (crowdFunding.fundingGoalTarget() * percent) / 100;
-            require(toTransfer <= address(this).balance);
-            crowdFundingAddress.transfer(toTransfer);
+            if(toTransfer <= address(this).balance)
+                crowdFundingAddress.transfer(toTransfer);
             crowdFunding.sponsorDeposit();
         }
     }
