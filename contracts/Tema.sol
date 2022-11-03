@@ -111,6 +111,7 @@ contract DistributeFunding {
     address crowdFundingAddr;
     mapping (address => Beneficiary) beneficiaries;
     uint totalPercent = 0;
+    uint moneyReceived;
 
     bool receivedFunding = false;
     event receivedFunds(address, uint);
@@ -132,6 +133,7 @@ contract DistributeFunding {
     function deposit() public payable {
         require(msg.sender == crowdFundingAddr, "Only CrowdFundingContract can send funded sum.");
         receivedFunding = true;
+        moneyReceived = address(this).balance;
     }
 
     function withdraw() external  {
@@ -140,7 +142,7 @@ contract DistributeFunding {
         require(beneficiaries[msg.sender].hasWithdrawn == false, "This beneficiary already withdrew his share");
         uint percent = beneficiaries[msg.sender].percent;
         beneficiaries[msg.sender].hasWithdrawn = true;
-        uint transferSum = (address(this).balance * percent) / 100;
+        uint transferSum = (moneyReceived * percent) / 100;
         address payable beneficiary = payable(msg.sender);
         beneficiary.transfer(transferSum);
         emit withdrawnFunds(msg.sender, transferSum, percent);
@@ -159,12 +161,17 @@ contract DistributeFunding {
         return beneficiaries[msg.sender].percent;
     }
 
-    function addBeneficiary(uint percent) public {
+    modifier onlyByOwner()  {
+        require(msg.sender == ownerAddress);
+        _;
+    }
+
+    function addBeneficiary(uint percent, address beneficiary) onlyByOwner() public {
         require(percent > 0, "0% not accepted");
         require(totalPercent + percent <= 100, "Given percent is higher than the available percentage.");
         totalPercent += percent;
-        beneficiaries[msg.sender].percent = percent;
-        beneficiaries[msg.sender].hasWithdrawn = false;
+        beneficiaries[beneficiary].percent = percent;
+        beneficiaries[beneficiary].hasWithdrawn = false;
     }
 
 }

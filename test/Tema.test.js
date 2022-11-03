@@ -58,6 +58,16 @@ beforeEach(async () => {
         from: accounts[0],
         gas: "1000000",
     })
+
+    distributeFunding.methods.addBeneficiary(10, accounts[2]).send({
+        from: accounts[0],
+        gas: "1000000"
+    })
+
+    distributeFunding.methods.addBeneficiary(50, accounts[3]).send({
+        from: accounts[0],
+        gas: "1000000"
+    })
 })
 
 describe('Tema', function () {
@@ -131,6 +141,22 @@ describe('Tema', function () {
             assert.equal(state, 2)
             assert.equal(crowdFundingBalance, 0)
             assert.equal(distributeFundingBalance, crowdFundingGoal + toTransfer)
+
+
+            await distributeFunding.methods.withdraw().send({
+                from: accounts[2],
+                gas: "1000000"
+            })
+            let accountBalance2 = await web3.eth.getBalance(accounts[2]);
+            assert.equal(accountBalance2.substring(accountBalance2.length - 3, accountBalance2.length), 240)
+
+
+            await distributeFunding.methods.withdraw().send({
+                from: accounts[3],
+                gas: "1000000"
+            })
+            let accountBalance3 = await web3.eth.getBalance(accounts[3]);
+            assert.equal(accountBalance3.substring(accountBalance3.length - 4, accountBalance3.length), 1200)
         });
     })
 });
