@@ -76,6 +76,7 @@ contract SponsorFunding {
 
     address private ownerAddress;
     uint public percent;
+    address payable crowdFundingAddress;
 
     constructor (uint initPercent) payable {
         ownerAddress = msg.sender;
@@ -87,21 +88,23 @@ contract SponsorFunding {
         _;
     }
 
+    function setCrowdFundingAddress(address payable _crowdFundingAddress)  onlyByOwner() public {
+        crowdFundingAddress = _crowdFundingAddress;
+    }
+
     function deposit() external payable {
         if (msg.sender != ownerAddress) {
             revert("you are not the owner");
         }
     }
 
-    function withdraw(uint amount) external {
-        require(msg.sender == ownerAddress);
+    function withdraw(uint amount) onlyByOwner() external {
         address payable user = payable(msg.sender);
         require(amount <= address(this).balance);
         user.transfer(amount);
     }
 
-    function setPercent(uint newPercent) external {
-        require(msg.sender == ownerAddress);
+    function setPercent(uint newPercent) onlyByOwner() external {
         percent = newPercent;
     }
 
@@ -110,7 +113,7 @@ contract SponsorFunding {
     }
 
     function sponsorCrowdFunding() external {
-        address payable crowdFundingAddress = payable(msg.sender);
+        require(crowdFundingAddress == msg.sender);
         CrowdFunding crowdFunding = CrowdFunding(crowdFundingAddress);
         if (crowdFunding.fundingGoalTarget() == crowdFundingAddress.balance) {
             uint toTransfer = (crowdFunding.fundingGoalTarget() * percent) / 100;
@@ -165,8 +168,7 @@ contract DistributeFunding {
         emit withdrawnFunds(msg.sender, transferSum, percent);
     }
 
-    function setCrowdFundingAddr(address _crowdFundingAddr) public {
-        require(msg.sender == ownerAddress);
+    function setCrowdFundingAddr(address _crowdFundingAddr) onlyByOwner() public {
         crowdFundingAddr = _crowdFundingAddr;
     }
 

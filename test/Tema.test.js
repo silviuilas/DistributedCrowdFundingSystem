@@ -59,6 +59,11 @@ beforeEach(async () => {
         gas: "1000000",
     })
 
+    sponsorFunding.methods.setCrowdFundingAddress(crowdfunding.options.address).send({
+        from: accounts[0],
+        gas: "1000000",
+    })
+
     distributeFunding.methods.addBeneficiary(10, accounts[2]).send({
         from: accounts[0],
         gas: "1000000"
