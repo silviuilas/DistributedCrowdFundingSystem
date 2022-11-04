@@ -131,7 +131,7 @@ describe('Tema', function () {
         });
     })
     describe("End To End", async function () {
-        it('should sponsor crowd funding if the target has been reached and transfer the money to DistributeFunding', async function () {
+        it('should reach the target of crowd funding , get the money from the sponsor and transfer the money to DistributeFunding', async function () {
             let percent = await sponsorFunding.methods.percent().call();
 
             await crowdfunding.methods.deposit().send({
@@ -182,5 +182,43 @@ describe('Tema', function () {
             let accountBalance3 = await web3.eth.getBalance(accounts[3]);
             assert.equal(accountBalance3.substring(accountBalance3.length - 4, accountBalance3.length), 1200)
         });
+
+        it('should reach the target of crowd funding and transfer the money to DistributeFunding', async function () {
+            sponsorFunding.methods.withdraw(sponsorFundingInitialValue).send({
+                from: accounts[0],
+                gas: "1000000",
+            })
+            await crowdfunding.methods.deposit().send({
+                from: accounts[1],
+                gas: "1000000",
+                value: crowdFundingGoal + 100
+            })
+            let state = await crowdfunding.methods.state().call();
+            let crowdFundingBalance = await crowdfunding.methods.getBalance().call()
+            assert(1, state)
+            assert(crowdFundingGoal, crowdFundingBalance)
+            await crowdfunding.methods.askForSponsorship().send({
+                from: accounts[0],
+                gas: "1000000",
+            })
+            let stateAfterSponsorship = await crowdfunding.methods.state().call();
+            let crowdFundingBalanceAfterSponsorship = await crowdfunding.methods.getBalance().call()
+            let toTransfer = 0;
+            assert(2, stateAfterSponsorship)
+            assert(crowdFundingGoal + toTransfer, crowdFundingBalanceAfterSponsorship);
+
+
+            await crowdfunding.methods.sendToDistributeFunding().send({
+                from: accounts[0],
+                gas: "1000000",
+            })
+            let stateFinal = await crowdfunding.methods.state().call();
+            let crowdFundingFinal = await crowdfunding.methods.getBalance().call()
+            assert(3, stateFinal)
+            assert("0", crowdFundingFinal)
+
+            let distributeFundingBalance = await distributeFunding.methods.getBalance().call();
+            assert.equal(distributeFundingBalance, crowdFundingGoal + toTransfer);
+        })
     })
-});
+})
